@@ -12,12 +12,11 @@ namespace NetCapture
 {
     internal class NetCapture
     {
-        private IMongoCollection<PacketRecord> packetRecords;
+        private IMongoCollection<Packet> packetRecords;
         private IMongoCollection<Node> nodeRecords;
         private IMongoCollection<Connection> connectionRecords;
 
-        private const int DECREMENT_INTERVAL = 5000000;
-        private const int MAX_CONNECTION_STRENGTH = 100;
+        private const int DECREMENT_INTERVAL = 30000;
 
         public NetCapture(DatabaseConn connection)
         {
@@ -76,56 +75,58 @@ namespace NetCapture
         private void device_OnPacketArrival(object sender, PacketCapture e)
         {
             // Define a new empty packet record
-            PacketRecord packetRecord = new PacketRecord();
+            Packet packetRecord = new Packet();
 
             // Define source and dest mac/address/port variables
-            PhysicalAddress sourceMac;
-            PhysicalAddress destinationMac;
-            IPAddress sourceIp;
-            IPAddress destinationIp;
+            PhysicalAddress sourceMAC;
+            PhysicalAddress destinationMAC;
+            IPAddress sourceIP;
+            IPAddress destinationIP;
             int sourcePort;
             int destinationPort;
 
             // Parse packet capture into a useful packet
-            Packet packet = Packet.ParsePacket(e.GetPacket().LinkLayerType, e.GetPacket().Data);
+            PacketDotNet.Packet packet = PacketDotNet.Packet.ParsePacket(e.GetPacket().LinkLayerType, e.GetPacket().Data);
             int length = packet.TotalPacketLength;
             Type type = packet.GetType();
 
             // Convert the payload to HEX
+            // Discuss before deployment
             byte[] payloadData = e.GetPacket().Data;
-
             string payloadHex = ByteArrayToString(payloadData);
 
             // Convert the timestamp to a readable format
             var timestamp = e.GetPacket().Timeval.Date;
-            string time = $"{timestamp.Hour}:{timestamp.Minute}:{timestamp.Second},{timestamp.Millisecond}";
+            string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
             // Assign known values of the packet record
-            packetRecord.Expiration = DateTime.UtcNow.AddSeconds(DatabaseConn.PACKET_EXP_SECONDS);
-            packetRecord.Timestamp = time;
             packetRecord.Length = length;
             packetRecord.PayloadHex = payloadHex;
+            packetRecord.Timestamp = time;
 
             // Extract MAC information
             EthernetPacket ethernetPacket = packet.Extract<EthernetPacket>();
             if (ethernetPacket != null)
             {
-                sourceMac = ethernetPacket.SourceHardwareAddress;
-                destinationMac = ethernetPacket.DestinationHardwareAddress;
+                sourceMAC = ethernetPacket.SourceHardwareAddress;
+                destinationMAC = ethernetPacket.DestinationHardwareAddress;
 
-                packetRecord.SourceMAC = sourceMac.ToString();
-                packetRecord.DestinationMAC = destinationMac.ToString();
+                packetRecord.SourceMAC = sourceMAC.ToString();
+                packetRecord.DestinationMAC = destinationMAC.ToString();
+
+                packetRecord.Protocol = "ETHERNET";
             }
 
             // Extract IP information
             IPPacket ipPacket = packet.Extract<IPPacket>();
             if (ipPacket != null)
             {
-                sourceIp = ipPacket.SourceAddress;
-                destinationIp = ipPacket.DestinationAddress;
+                sourceIP = ipPacket.SourceAddress;
+                destinationIP = ipPacket.DestinationAddress;
 
-                packetRecord.SourceIp = sourceIp.ToString();
-                packetRecord.DestinationIp = destinationIp.ToString();
+                packetRecord.SourceIP = sourceIP.ToString();
+                packetRecord.DestinationIP = destinationIP.ToString();
+                packetRecord.Protocol = "IP";
             }
 
             // Extract Port information
@@ -137,6 +138,7 @@ namespace NetCapture
 
                 packetRecord.SourcePort = sourcePort;
                 packetRecord.DestinationPort = destinationPort;
+                packetRecord.Protocol = "TCP";
             }
 
             UdpPacket udpPacket = packet.Extract<UdpPacket>();
@@ -147,55 +149,56 @@ namespace NetCapture
 
                 packetRecord.SourcePort = sourcePort;
                 packetRecord.DestinationPort = destinationPort;
+                packetRecord.Protocol = "UDP";
             }
 
             packetRecords.InsertOne(packetRecord);
+
+            // With the new packet, update the node/connection DBs
             createNodes(packetRecord);
             createConnection(packetRecord);
-
         }
 
-        public void createNodes(PacketRecord p)
+        public void createNodes(Packet p)
         {
-            var sourceMACAddressFilter = Builders<Node>.Filter.Eq(x => x.MACAddress, p.SourceMAC);
-            var destMACAddressFilter = Builders<Node>.Filter.Eq(x => x.MACAddress, p.DestinationMAC);
+            var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
+            var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
 
-
-            Node sourceNode = nodeRecords.Find(sourceMACAddressFilter).FirstOrDefault<Node>();
-            Node destNode = nodeRecords.Find(destMACAddressFilter).FirstOrDefault<Node>();
+            Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
+            Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
 
             // Create or Update Source Node
             if (sourceNode == null)
             {
                 Node newNode = new Node();
-                newNode.MACAddress = p.SourceMAC;
-                newNode.IPAddress = p.SourceIp;
-                newNode.HasConnections = true;
-                newNode.Expiration = DateTime.UtcNow.AddSeconds(DatabaseConn.NODE_EXP_SECONDS);
+                newNode.MACaddr = p.SourceMAC;
+                newNode.IPaddr = p.SourceIP;
+                newNode.DeviceType = null;
+                newNode.NumConnections = 1;
+                newNode.NumPackets = 1;
                 nodeRecords.InsertOne(newNode);
             }
             else
             {
-                sourceNode.Expiration = DateTime.UtcNow.AddSeconds(DatabaseConn.NODE_EXP_SECONDS);
-                sourceNode.IPAddress = p.SourceIp;
-                nodeRecords.ReplaceOne(sourceMACAddressFilter, sourceNode);
+                sourceNode.NumPackets += 1;
+                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
 
             // Create or Update Destination Node
             if (destNode == null)
             {
                 Node newNode = new Node();
-                newNode.MACAddress = p.DestinationMAC;
-                newNode.IPAddress = p.DestinationIp;
-                newNode.HasConnections = true;
-                newNode.Expiration = DateTime.UtcNow.AddSeconds(DatabaseConn.NODE_EXP_SECONDS);
+                newNode.MACaddr = p.DestinationMAC;
+                newNode.IPaddr = p.DestinationIP;
+                newNode.DeviceType = null;
+                newNode.NumConnections = 1;
+                newNode.NumPackets = 1;
                 nodeRecords.InsertOne(newNode);
             }
             else
             {
-                destNode.Expiration = DateTime.UtcNow.AddSeconds(DatabaseConn.NODE_EXP_SECONDS);
-                destNode.IPAddress = p.DestinationIp;
-                nodeRecords.ReplaceOne(destMACAddressFilter, destNode);
+                destNode.NumPackets += 1;
+                nodeRecords.ReplaceOne(destIpAddressFilter, destNode);
             }
 
             /**
@@ -207,44 +210,68 @@ namespace NetCapture
              */
         }
 
-        public void createConnection(PacketRecord p)
+        public void createConnection(Packet p)
         {
-            var sourceDestDirection = Builders<Connection>.Filter.Eq(x => x.MACAddress1, p.SourceMAC)
-                & Builders<Connection>.Filter.Eq(x => x.MACAddress2, p.DestinationMAC)
-                & Builders<Connection>.Filter.Lt(x => x.Weight, MAX_CONNECTION_STRENGTH);
-            var
-                destSourceDirection = Builders<Connection>.Filter.Eq(x => x.MACAddress1, p.DestinationMAC)
-                & Builders<Connection>.Filter.Eq(x => x.MACAddress2, p.SourceMAC)
-                & Builders<Connection>.Filter.Lt(x => x.Weight, MAX_CONNECTION_STRENGTH);
+            // Check the database for a matching connection in both directions
+            // We need to check both directions so we can capture data travelling along the connection and
+            // against it.
+            var AtoBDir = Builders<Connection>.Filter.Eq(x => x.NodeA_IP, p.SourceIP)
+                & Builders<Connection>.Filter.Eq(x => x.NodeB_IP, p.DestinationIP);
+            Connection AtoBConn = connectionRecords.Find(AtoBDir).FirstOrDefault<Connection>();
+            
+            var BtoADir = Builders<Connection>.Filter.Eq(x => x.NodeA_IP, p.DestinationIP)
+                & Builders<Connection>.Filter.Eq(x => x.NodeB_IP, p.SourceIP);
+            Connection BtoAConn = connectionRecords.Find(BtoADir).FirstOrDefault<Connection>();
 
-
-            Connection sourceDestConnection = connectionRecords.Find(sourceDestDirection).FirstOrDefault<Connection>();
-            Connection destSourceConnection = connectionRecords.Find(destSourceDirection).FirstOrDefault<Connection>();
-
-            if (sourceDestConnection == null && destSourceConnection == null)
+            // If we don't have a connection for this IP pair yet, make a new one
+            if (AtoBConn == null && BtoAConn == null)
             {
                 Connection newConnection = new Connection();
-                newConnection.MACAddress1 = p.SourceMAC;
-                newConnection.MACAddress2 = p.DestinationMAC;
-                newConnection.Weight = 1;
+                newConnection.NodeA_IP = p.SourceIP;
+                newConnection.NodeB_IP = p.DestinationIP;
+                newConnection.NumPackets = 1;
+                newConnection.LastPacketTimestamp = p.Timestamp;
                 connectionRecords.InsertOne(newConnection);
             }
-            else if (sourceDestConnection != null)
+
+            // If a connection exists in the DB with conn.source == p.source and conn.dest == p.dest increment the counter
+            else if (AtoBConn != null)
             {
-                int weight = sourceDestConnection.Weight;
-                weight = weight + 1;
-                sourceDestConnection.Weight = weight;
-                connectionRecords.ReplaceOne(sourceDestDirection, sourceDestConnection);
+                AtoBConn.NumPackets += 1;
+                AtoBConn.LastPacketTimestamp = p.Timestamp;
+                connectionRecords.ReplaceOne(AtoBDir, AtoBConn);
+
+                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
+                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
+
+                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
+                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
+
+                sourceNode.NumConnections += 1;
+                destNode.NumConnections += 1;
+                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
-            else if (destSourceConnection != null)
+
+            // If a connection exists in the DB with conn.source == p.dest and conn.dest == p.source increment the counter
+            else if (BtoAConn != null)
             {
-                int weight = destSourceConnection.Weight;
-                weight = weight + 1;
-                destSourceConnection.Weight = weight;
-                connectionRecords.ReplaceOne(destSourceDirection, destSourceConnection);
+                BtoAConn.NumPackets += 1;
+                BtoAConn.LastPacketTimestamp = p.Timestamp;
+                connectionRecords.ReplaceOne(BtoADir, BtoAConn);
+
+                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
+                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
+
+                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
+                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
+
+                sourceNode.NumConnections += 1;
+                destNode.NumConnections += 1;
+                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
         }
 
+        /* No clue why this exists tbh
         public void connectionClear()
         {
             while (true)
@@ -256,13 +283,13 @@ namespace NetCapture
                 var filter = Builders<Connection>.Filter.Empty;
 
                 // Define the update definition to decrement the field
-                var updateDefinition = Builders<Connection>.Update.Inc(x => x.Weight, -1);
+                var updateDefinition = Builders<Connection>.Update.Inc(x => x.NumPackets, -1);
 
                 // Update all documents in the collection matching the filter
                 var updateResult = connectionRecords.UpdateMany(filter, updateDefinition);
 
                 // Define a condition to check if the field becomes negative
-                var condition = Builders<Connection>.Filter.Lt(x => x.Weight, 1);
+                var condition = Builders<Connection>.Filter.Lt(x => x.NumPackets, 1);
 
                 // Find documents that meet the condition
                 var documentsToDelete = connectionRecords.Find(condition).ToList();
@@ -274,7 +301,7 @@ namespace NetCapture
                     connectionRecords.DeleteMany(deleteFilter);
                 }
             }
-        }
+        } */
 
         public static string ByteArrayToString(byte[] ba)
         {

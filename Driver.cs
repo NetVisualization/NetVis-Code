@@ -29,10 +29,10 @@ namespace NetCapture
                 capDevice.Description);
 
             // Start a new thread to decrement weights on connections
-            Thread connectionClearingThread = new Thread(new ThreadStart(netCap.connectionClear));
-            connectionClearingThread.Start();
+            //Thread connectionClearingThread = new Thread(new ThreadStart(netCap.connectionClear));
+            //connectionClearingThread.Start();
 
-            // Start caputre on main thread
+            // Start capture on main thread
             capDevice.StartCapture();
 
             // Wait for "enter" to stop capture
@@ -40,7 +40,7 @@ namespace NetCapture
 
             // Close cap device
             capDevice.Close();
-            connectionClearingThread.Abort();
+            //connectionClearingThread.Abort();
         }
     }
 }
