@@ -12,15 +12,15 @@ namespace NetCapture
         private IMongoDatabase NET_VIZ_DB;
 
         // Collections from the database
-        private IMongoCollection<PacketRecord> PACKET_COLLECTION;
+        private IMongoCollection<Packet> PACKET_COLLECTION;
         private IMongoCollection<Node> NODE_COLLECTION;
         private IMongoCollection<Connection> CONNECTION_COLLECTION;
         private IMongoCollection<History> HISTORY_COLLECTION;
 
         // TTL index variables
-        IndexKeysDefinition<PacketRecord> indexKeysDefinitionP;
+        IndexKeysDefinition<Packet> indexKeysDefinitionP;
         CreateIndexOptions indexOptionsP;
-        CreateIndexModel<PacketRecord> indexModelP;
+        CreateIndexModel<Packet> indexModelP;
 
         IndexKeysDefinition<Node> indexKeysDefinitionN;
         CreateIndexOptions indexOptionsN;
@@ -43,16 +43,6 @@ namespace NetCapture
 
                 // Get correct database
                 NET_VIZ_DB = MONGO_DB_CLIENT.GetDatabase(dbName);
-
-                // Create a TTL index on the "Expiration" field for PacketRecords
-                indexKeysDefinitionP = Builders<PacketRecord>.IndexKeys.Ascending(x => x.Expiration);
-                indexOptionsP = new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(PACKET_EXP_SECONDS) };
-                indexModelP = new CreateIndexModel<PacketRecord>(indexKeysDefinitionP, indexOptionsP);
-
-                // Create a TTL index on the "Expiration" field for Nodes
-                indexKeysDefinitionN = Builders<Node>.IndexKeys.Ascending(x => x.Expiration);
-                indexOptionsN = new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(NODE_EXP_SECONDS) };
-                indexModelN = new CreateIndexModel<Node>(indexKeysDefinitionN, indexOptionsN);
 
                 // Update connection history for debugging
                 HISTORY_COLLECTION = NET_VIZ_DB.GetCollection<History>("ConnectionHistory");
@@ -80,12 +70,10 @@ namespace NetCapture
             // Known collections created for every capture session
             // Can be modified for multiple client interfaces if necessary
             NET_VIZ_DB.CreateCollection("Packets");
-            PACKET_COLLECTION = NET_VIZ_DB.GetCollection<PacketRecord>("Packets");
-            PACKET_COLLECTION.Indexes.CreateOne(indexModelP);
+            PACKET_COLLECTION = NET_VIZ_DB.GetCollection<Packet>("Packets");
 
             NET_VIZ_DB.CreateCollection("Nodes");
             NODE_COLLECTION = NET_VIZ_DB.GetCollection<Node>("Nodes");
-            NODE_COLLECTION.Indexes.CreateOne(indexModelN);
 
             NET_VIZ_DB.CreateCollection("Connections");
             CONNECTION_COLLECTION = NET_VIZ_DB.GetCollection<Connection>("Connections");
@@ -93,12 +81,13 @@ namespace NetCapture
 
         public void destroyCollections()
         {
+            // Destroy all collections except for ConnectionHistory
             NET_VIZ_DB.DropCollection("Packets");
             NET_VIZ_DB.DropCollection("Nodes");
             NET_VIZ_DB.DropCollection("Connections");
         }
 
-        public IMongoCollection<PacketRecord> getPacketCollection()
+        public IMongoCollection<Packet> getPacketCollection()
         {
             return PACKET_COLLECTION;
         }
