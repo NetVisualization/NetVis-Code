@@ -1,75 +1,50 @@
-﻿using System;
-using System.Linq;
-using SharpPcap;
+﻿using MongoDB.Driver;
 using PacketDotNet;
-using System.Net;
+using SharpPcap;
+using SharpPcap.LibPcap;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.NetworkInformation;
-using MongoDB.Driver;
-using System.Threading;
-using System.Net.Sockets;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NetCapture
 {
-    internal class NetCapture
+    internal class LocalFileCapture
     {
         private IMongoCollection<Packet> packetRecords;
         private IMongoCollection<Node> nodeRecords;
         private IMongoCollection<Connection> connectionRecords;
 
-        private const int DECREMENT_INTERVAL = 30000;
+        private CaptureFileReaderDevice reader;
 
-        public NetCapture(DatabaseConn connection)
+        public LocalFileCapture(DatabaseConn connection)
         {
             packetRecords = connection.getPacketCollection();
             nodeRecords = connection.getNodeCollection();
             connectionRecords = connection.getConnectionCollection();
         }
 
-        public ILiveDevice getCaptureDevice()
+        public CaptureFileReaderDevice GetReader(string fname)
         {
-            //Print SharpPcap version
-            var ver = Pcap.SharpPcapVersion;
-            Console.WriteLine("SharpPcap {0}", ver);
-
-            // Retrieve the device list
-            var devices = CaptureDeviceList.Instance;
-
-            // If no devices were found print an error
-            if (devices.Count() < 1)
-            {
-                Console.WriteLine("No devices were found on this machine");
-                return null;
-            }
-            Console.WriteLine();
-            Console.WriteLine("The following devices are available on this machine:");
-            Console.WriteLine("----------------------------------------------------");
-            Console.WriteLine();
-
-            int i = 0;
-            // Print out the devices
-            foreach (var dev in devices)
-            {
-                /* Description */
-                Console.WriteLine("{0}) {1} {2}", i, dev.Name, dev.Description);
-                i++;
-            }
-            Console.WriteLine();
-            Console.Write("-- Please choose a device to capture: ");
-
-            // TODO: FIX SECURITY
-            i = int.Parse(Console.ReadLine());
-
-            return devices[i];
+            return new CaptureFileReaderDevice("../../" + fname);
         }
 
-        public void deviceSetup(ILiveDevice device)
+        internal void ReaderSetup(CaptureFileReaderDevice reader)
         {
-            // Register our handler function to the 'packet arrival' event
-            device.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
+            try
+            {
+                reader.Open();
+                reader.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
 
-            // Open the device for capturing
-            int readTimeoutMilliseconds = 1000;
-            device.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: readTimeoutMilliseconds);
+            } catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                Console.ReadLine();
+                System.Environment.Exit(1);
+            }
         }
 
         private void device_OnPacketArrival(object sender, PacketCapture e)
@@ -127,6 +102,7 @@ namespace NetCapture
                 packetRecord.SourceIP = sourceIP.ToString();
                 packetRecord.DestinationIP = destinationIP.ToString();
                 packetRecord.Protocol = "IP";
+                Console.WriteLine(sourceIP);
             }
 
             // Extract Port information
@@ -200,14 +176,6 @@ namespace NetCapture
                 destNode.NumPackets += 1;
                 nodeRecords.ReplaceOne(destIpAddressFilter, destNode);
             }
-
-            /**
-             * 
-             * TODO:
-             * Does not handle 0xFF broadcast
-             * Decide how to display and handle broadcast nodes
-             * 
-             */
         }
 
         public void createConnection(Packet p)
@@ -218,7 +186,7 @@ namespace NetCapture
             var AtoBDir = Builders<Connection>.Filter.Eq(x => x.NodeA_IP, p.SourceIP)
                 & Builders<Connection>.Filter.Eq(x => x.NodeB_IP, p.DestinationIP);
             Connection AtoBConn = connectionRecords.Find(AtoBDir).FirstOrDefault<Connection>();
-            
+
             var BtoADir = Builders<Connection>.Filter.Eq(x => x.NodeA_IP, p.DestinationIP)
                 & Builders<Connection>.Filter.Eq(x => x.NodeB_IP, p.SourceIP);
             Connection BtoAConn = connectionRecords.Find(BtoADir).FirstOrDefault<Connection>();
@@ -232,6 +200,16 @@ namespace NetCapture
                 newConnection.NumPackets = 1;
                 newConnection.LastPacketTimestamp = p.Timestamp;
                 connectionRecords.InsertOne(newConnection);
+
+                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
+                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
+
+                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
+                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
+
+                sourceNode.NumConnections += 1;
+                destNode.NumConnections += 1;
+                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
 
             // If a connection exists in the DB with conn.source == p.source and conn.dest == p.dest increment the counter
@@ -240,16 +218,6 @@ namespace NetCapture
                 AtoBConn.NumPackets += 1;
                 AtoBConn.LastPacketTimestamp = p.Timestamp;
                 connectionRecords.ReplaceOne(AtoBDir, AtoBConn);
-
-                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
-                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
-
-                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
-                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
-
-                sourceNode.NumConnections += 1;
-                destNode.NumConnections += 1;
-                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
 
             // If a connection exists in the DB with conn.source == p.dest and conn.dest == p.source increment the counter
@@ -258,50 +226,8 @@ namespace NetCapture
                 BtoAConn.NumPackets += 1;
                 BtoAConn.LastPacketTimestamp = p.Timestamp;
                 connectionRecords.ReplaceOne(BtoADir, BtoAConn);
-
-                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
-                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
-
-                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
-                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
-
-                sourceNode.NumConnections += 1;
-                destNode.NumConnections += 1;
-                nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
         }
-
-        /* No clue why this exists tbh
-        public void connectionClear()
-        {
-            while (true)
-            {
-                // Perform op after every 5 seconds
-                Thread.Sleep(DECREMENT_INTERVAL);
-
-                // Define the update filter (optional) to match specific documents
-                var filter = Builders<Connection>.Filter.Empty;
-
-                // Define the update definition to decrement the field
-                var updateDefinition = Builders<Connection>.Update.Inc(x => x.NumPackets, -1);
-
-                // Update all documents in the collection matching the filter
-                var updateResult = connectionRecords.UpdateMany(filter, updateDefinition);
-
-                // Define a condition to check if the field becomes negative
-                var condition = Builders<Connection>.Filter.Lt(x => x.NumPackets, 1);
-
-                // Find documents that meet the condition
-                var documentsToDelete = connectionRecords.Find(condition).ToList();
-
-                if (documentsToDelete.Count > 0)
-                {
-                    // Delete the documents that meet the condition
-                    var deleteFilter = Builders<Connection>.Filter.In(x => x.Id, documentsToDelete.Select(doc => doc.Id));
-                    connectionRecords.DeleteMany(deleteFilter);
-                }
-            }
-        } */
 
         public static string ByteArrayToString(byte[] ba)
         {

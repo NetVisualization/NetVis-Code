@@ -1,5 +1,11 @@
-﻿using System;
+﻿using MongoDB.Driver;
+using SharpPcap;
+using SharpPcap.LibPcap;
+using System;
+using System.Diagnostics;
+using System.IO;
 using System.Threading;
+
 
 namespace NetCapture
 {
@@ -19,8 +25,40 @@ namespace NetCapture
             connection.destroyCollections();
             connection.createCollections();
 
+            // Ask user how where they want to get data from
+            Console.WriteLine("Which source from which source?");
+            Console.WriteLine("0) Static Capture from WiFi Network");
+            Console.WriteLine("1) Local .pcap file");
+
+            string dataSource = Console.ReadLine();
+
+            // Static Network WiFi Capture
+            if (dataSource == "0")
+            {
+                NetworkStaticCapture(connection);
+            }
+
+            // Local pcap file
+            else if (dataSource == "1")
+            {
+                Console.WriteLine("Enter .pcap filename (in NetVis-Code):");
+                string fname = Console.ReadLine();
+
+                FileCapture(connection, fname);
+            }
+            else
+            {
+                Console.WriteLine("Invalid source. Exiting...");
+            }
+
+            // Wait for close
+            Console.ReadLine();
+        }
+
+        public static void NetworkStaticCapture(DatabaseConn connection)
+        {
             // Create new capture instance and get the capture device
-            NetCapture netCap = new NetCapture(connection);
+            StaticNetCapture netCap = new StaticNetCapture(connection);
             var capDevice = netCap.getCaptureDevice();
             netCap.deviceSetup(capDevice);
 
@@ -28,19 +66,30 @@ namespace NetCapture
             Console.WriteLine("-- Listening on {0}, hit 'Enter' to stop...",
                 capDevice.Description);
 
-            // Start a new thread to decrement weights on connections
-            //Thread connectionClearingThread = new Thread(new ThreadStart(netCap.connectionClear));
-            //connectionClearingThread.Start();
-
-            // Start capture on main thread
             capDevice.StartCapture();
 
             // Wait for "enter" to stop capture
             Console.ReadLine();
 
-            // Close cap device
             capDevice.Close();
-            //connectionClearingThread.Abort();
+
+            Console.WriteLine("\nSuccessful capture!");
+        }
+
+        public static void FileCapture(DatabaseConn connection, string fname)
+        {
+            LocalFileCapture fCap = new LocalFileCapture(connection);
+
+            CaptureFileReaderDevice reader = fCap.GetReader(fname);
+            fCap.ReaderSetup(reader);
+
+            Console.WriteLine("Reading file...");
+
+            reader.Capture();
+
+            reader.Close();
+
+            Console.WriteLine("\nSuccessful read!");
         }
     }
 }
