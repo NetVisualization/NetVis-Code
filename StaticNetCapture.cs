@@ -97,13 +97,13 @@ namespace NetCapture
             string payloadHex = ByteArrayToString(payloadData);
 
             // Convert the timestamp to a readable format
-            var timestamp = e.GetPacket().Timeval.Date;
-            string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
+            DateTime timestamp = e.GetPacket().Timeval.Date;
+            //string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
             // Assign known values of the packet record
             packetRecord.Length = length;
             packetRecord.PayloadHex = payloadHex;
-            packetRecord.Timestamp = time;
+            packetRecord.Timestamp = timestamp;
 
             // Extract MAC information
             EthernetPacket ethernetPacket = packet.Extract<EthernetPacket>();
