@@ -96,14 +96,15 @@ namespace NetCapture
             byte[] payloadData = e.GetPacket().Data;
             string payloadHex = ByteArrayToString(payloadData);
 
-            // Convert the timestamp to a readable format
+            // Convert the timestamp to a readable format "MM-DD-YYYY HH:MM:SS.sss"
             DateTime timestamp = e.GetPacket().Timeval.Date;
+            string time = timestamp.ToString("MM-dd-yyyy HH:mm:ss.fffff");
             //string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
             // Assign known values of the packet record
             packetRecord.Length = length;
             packetRecord.PayloadHex = payloadHex;
-            packetRecord.Timestamp = timestamp;
+            packetRecord.TimestampStr = time;
 
             // Extract MAC information
             EthernetPacket ethernetPacket = packet.Extract<EthernetPacket>();
@@ -223,7 +224,7 @@ namespace NetCapture
                 newConnection.NodeA_IP = p.SourceIP;
                 newConnection.NodeB_IP = p.DestinationIP;
                 newConnection.NumPackets = 1;
-                newConnection.LastPacketTimestamp = p.Timestamp;
+                newConnection.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.InsertOne(newConnection);
 
                 var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
@@ -241,7 +242,7 @@ namespace NetCapture
             else if (AtoBConn != null)
             {
                 AtoBConn.NumPackets += 1;
-                AtoBConn.LastPacketTimestamp = p.Timestamp;
+                AtoBConn.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.ReplaceOne(AtoBDir, AtoBConn);
             }
 
@@ -249,7 +250,7 @@ namespace NetCapture
             else if (BtoAConn != null)
             {
                 BtoAConn.NumPackets += 1;
-                BtoAConn.LastPacketTimestamp = p.Timestamp;
+                BtoAConn.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.ReplaceOne(BtoADir, BtoAConn);
             }
         }

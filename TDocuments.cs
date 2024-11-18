@@ -12,7 +12,7 @@ namespace NetCapture
     public class Packet
     {
         public ObjectId Id { get; set; }
-        public DateTime Timestamp { get; set; }
+        public string TimestampStr { get; set; }
         public string SourceMAC { get; set; }
         public string DestinationMAC { get; set; }
         public string SourceIP { get; set; }
@@ -30,7 +30,7 @@ namespace NetCapture
         public string NodeA_IP { get; set; }
         public string NodeB_IP { get; set; }
         public int NumPackets { get; set; }
-        public DateTime LastPacketTimestamp {  get; set; }
+        public string LastPacketTimestampStr {  get; set; }
     }
 
     public class Node
