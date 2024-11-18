@@ -1,0 +1,111 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|C:\\Users\\WPT\\Desktop\\NetVis-Code\\tdocuments.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|solutionrelative:tdocuments.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|c:\\users\\wpt\\desktop\\netvis-code\\databaseconn.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|solutionrelative:databaseconn.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|C:\\Users\\WPT\\Desktop\\NetVis-Code\\localfilecapture.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|solutionrelative:localfilecapture.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|C:\\Users\\WPT\\Desktop\\NetVis-Code\\staticnetcapture.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|solutionrelative:staticnetcapture.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|c:\\users\\wpt\\desktop\\netvis-code\\driver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9DB0FAB4-90AA-4924-AC05-777C7AF3CA6F}|NetCapture.csproj|solutionrelative:driver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 228,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Driver.cs",
+              "DocumentMoniker": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\Driver.cs",
+              "RelativeDocumentMoniker": "Driver.cs",
+              "ToolTip": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\Driver.cs",
+              "RelativeToolTip": "Driver.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAQwD0AAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-28T15:55:33.855Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 298,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LocalFileCapture.cs",
+              "DocumentMoniker": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\LocalFileCapture.cs",
+              "RelativeDocumentMoniker": "LocalFileCapture.cs",
+              "ToolTip": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\LocalFileCapture.cs",
+              "RelativeToolTip": "LocalFileCapture.cs",
+              "ViewState": "AgIAAFgAAAAAAAAAAAAkwFgAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-28T15:55:34.198Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "StaticNetCapture.cs",
+              "DocumentMoniker": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\StaticNetCapture.cs",
+              "RelativeDocumentMoniker": "StaticNetCapture.cs",
+              "ToolTip": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\StaticNetCapture.cs",
+              "RelativeToolTip": "StaticNetCapture.cs",
+              "ViewState": "AgIAAEEAAAAAAAAAAAAmwGMAAAA8AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-28T15:55:34.202Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "DatabaseConn.cs",
+              "DocumentMoniker": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\DatabaseConn.cs",
+              "RelativeDocumentMoniker": "DatabaseConn.cs",
+              "ToolTip": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\DatabaseConn.cs",
+              "RelativeToolTip": "DatabaseConn.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAAwBMAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-28T15:55:34.203Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "TDocuments.cs",
+              "DocumentMoniker": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\TDocuments.cs",
+              "RelativeDocumentMoniker": "TDocuments.cs",
+              "ToolTip": "C:\\Users\\WPT\\Desktop\\NetVis-Code\\TDocuments.cs",
+              "RelativeToolTip": "TDocuments.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAkwBEAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-28T15:55:34.204Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

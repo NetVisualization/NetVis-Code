@@ -20,6 +20,8 @@ namespace NetCapture
 
         private CaptureFileReaderDevice reader;
 
+        private int count = 0;
+
         public LocalFileCapture(DatabaseConn connection)
         {
             packetRecords = connection.getPacketCollection();
@@ -71,14 +73,15 @@ namespace NetCapture
             string payloadHex = ByteArrayToString(payloadData);
 
             // Convert the timestamp to a readable format
-            // 'M-D-Y H:M:S.ms'
+            // 'MM-DD-YY HH:MM:SS.sss'
             DateTime timestamp = e.GetPacket().Timeval.Date;
+            string time = timestamp.ToString("MM-dd-yyyy HH:mm:ss.fffff");
             //string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
             // Assign known values of the packet record
             packetRecord.Length = length;
             packetRecord.PayloadHex = payloadHex;
-            packetRecord.Timestamp = timestamp;
+            packetRecord.TimestampStr = time;
 
             // Extract MAC information
             EthernetPacket ethernetPacket = packet.Extract<EthernetPacket>();
@@ -103,7 +106,6 @@ namespace NetCapture
                 packetRecord.SourceIP = sourceIP.ToString();
                 packetRecord.DestinationIP = destinationIP.ToString();
                 packetRecord.Protocol = "IP";
-                Console.WriteLine(sourceIP);
             }
 
             // Extract Port information
@@ -127,6 +129,12 @@ namespace NetCapture
                 packetRecord.SourcePort = sourcePort;
                 packetRecord.DestinationPort = destinationPort;
                 packetRecord.Protocol = "UDP";
+            }
+
+            count++;
+            if (count % 10 == 0)
+            {
+                Console.WriteLine($"Packets processed: {count}");
             }
 
             packetRecords.InsertOne(packetRecord);
@@ -199,7 +207,7 @@ namespace NetCapture
                 newConnection.NodeA_IP = p.SourceIP;
                 newConnection.NodeB_IP = p.DestinationIP;
                 newConnection.NumPackets = 1;
-                newConnection.LastPacketTimestamp = p.Timestamp;
+                newConnection.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.InsertOne(newConnection);
 
                 var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
@@ -217,7 +225,7 @@ namespace NetCapture
             else if (AtoBConn != null)
             {
                 AtoBConn.NumPackets += 1;
-                AtoBConn.LastPacketTimestamp = p.Timestamp;
+                AtoBConn.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.ReplaceOne(AtoBDir, AtoBConn);
             }
 
@@ -225,7 +233,7 @@ namespace NetCapture
             else if (BtoAConn != null)
             {
                 BtoAConn.NumPackets += 1;
-                BtoAConn.LastPacketTimestamp = p.Timestamp;
+                BtoAConn.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.ReplaceOne(BtoADir, BtoAConn);
             }
         }
