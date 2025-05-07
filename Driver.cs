@@ -21,21 +21,23 @@ namespace NetCapture
             //                                     Unnecessary params - keep in temporarily
             DatabaseConn connection = new DatabaseConn(DB_HOST, DB_PORT, DB_NAME);
 
-            // Destroy collections at end of capture
-            connection.destroyCollections();
-            connection.createCollections();
-
             // Ask user how where they want to get data from
             Console.WriteLine("Which source from which source?");
             Console.WriteLine("0) Static Capture from WiFi Network");
             Console.WriteLine("1) Local .pcap file");
+            Console.WriteLine("2) Live Network Capture");
+            Console.WriteLine("\nWarning: proceeding will destroy any previous data stored in the database.");
 
             string dataSource = Console.ReadLine();
+
+            // Destroy collections at end of capture
+            connection.destroyCollections();
+            connection.createCollections();
 
             // Static Network WiFi Capture
             if (dataSource == "0")
             {
-                NetworkStaticCapture(connection);
+                NetworkCapture(connection);
             }
 
             // Local pcap file
@@ -46,6 +48,13 @@ namespace NetCapture
 
                 FileCapture(connection, fname);
             }
+
+            // Live Network Capture
+            else if (dataSource == "2")
+            {
+                NetworkCapture(connection);
+            }
+
             else
             {
                 Console.WriteLine("Invalid source. Exiting...");
@@ -55,7 +64,7 @@ namespace NetCapture
             Console.ReadLine();
         }
 
-        public static void NetworkStaticCapture(DatabaseConn connection)
+        public static void NetworkCapture(DatabaseConn connection)
         {
             // Create new capture instance and get the capture device
             StaticNetCapture netCap = new StaticNetCapture(connection);

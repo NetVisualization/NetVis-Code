@@ -33,8 +33,8 @@ namespace NetCapture
             //string connectionUri = $"mongodb://{host}:{port}";
 
             // Atlas API (Has a REST API for easy access)
-            // TODO: FIX SECURITY
-            string connectionUri = "mongodb+srv://Admin:Password@atlascluster.3kz6gdp.mongodb.net/?retryWrites=true&w=majority";
+            // TODO: FIX SECURITY ------->    password here \/
+            string connectionUri = "mongodb+srv://nvistake2:BatmanL1kesCoding@networkvisualization.bz0yh0k.mongodb.net/?retryWrites=true&w=majority&appName=NetworkVisualization";
 
             try
             {

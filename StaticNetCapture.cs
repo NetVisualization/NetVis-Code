@@ -81,8 +81,8 @@ namespace NetCapture
             // Define source and dest mac/address/port variables
             PhysicalAddress sourceMAC;
             PhysicalAddress destinationMAC;
-            IPAddress sourceIP;
-            IPAddress destinationIP;
+            IPAddress sourceIP = null;
+            IPAddress destinationIP = null;
             int sourcePort;
             int destinationPort;
 
@@ -91,19 +91,15 @@ namespace NetCapture
             int length = packet.TotalPacketLength;
             Type type = packet.GetType();
 
-            // Convert the payload to HEX
-            // Discuss before deployment
-            byte[] payloadData = e.GetPacket().Data;
-            string payloadHex = ByteArrayToString(payloadData);
-
             // Convert the timestamp to a readable format "MM-DD-YYYY HH:MM:SS.sss"
+            // Yes timestamps as strings is bad, but Mongo can't handle DateTime objects
             DateTime timestamp = e.GetPacket().Timeval.Date;
             string time = timestamp.ToString("MM-dd-yyyy HH:mm:ss.fffff");
             //string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
             // Assign known values of the packet record
             packetRecord.Length = length;
-            packetRecord.PayloadHex = payloadHex;
+            packetRecord.PayloadHex = null; // ByteArrayToString(e.GetPacket().Data);
             packetRecord.TimestampStr = time;
 
             // Extract MAC information
@@ -154,58 +150,56 @@ namespace NetCapture
                 packetRecord.Protocol = "UDP";
             }
 
-            packetRecords.InsertOne(packetRecord);
+            if (sourceIP != null && destinationIP != null)
+            {
+                packetRecords.InsertOne(packetRecord);
 
-            // With the new packet, update the node/connection DBs
-            createNodes(packetRecord);
-            createConnection(packetRecord);
+                // With the new packet, update the node/connection DBs
+                updateNodesConns(packetRecord);
+            }
         }
 
-        public void createNodes(Packet p)
+        public void updateNodesConns(Packet p)
         {
+            // --- Nodes ---
             var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
             var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
 
             Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
             Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
 
-            // Create or Update Source Node
             if (sourceNode == null)
             {
-                Node newNode = new Node();
-                newNode.MACaddr = p.SourceMAC;
-                newNode.IPaddr = p.SourceIP;
-                newNode.DeviceType = null;
-                newNode.NumConnections = 1;
-                newNode.NumPackets = 1;
-                nodeRecords.InsertOne(newNode);
+                sourceNode = new Node();
+                sourceNode.MACaddr = p.SourceMAC;
+                sourceNode.IPaddr = p.SourceIP;
+                sourceNode.DeviceType = null;
+                sourceNode.NumConnections = 0;
+                sourceNode.NumPackets = 1;
+                nodeRecords.InsertOne(sourceNode);
             }
             else
             {
                 sourceNode.NumPackets += 1;
                 nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
             }
-
-            // Create or Update Destination Node
             if (destNode == null)
             {
-                Node newNode = new Node();
-                newNode.MACaddr = p.DestinationMAC;
-                newNode.IPaddr = p.DestinationIP;
-                newNode.DeviceType = null;
-                newNode.NumConnections = 1;
-                newNode.NumPackets = 1;
-                nodeRecords.InsertOne(newNode);
+                destNode = new Node();
+                destNode.MACaddr = p.DestinationMAC;
+                destNode.IPaddr = p.DestinationIP;
+                destNode.DeviceType = null;
+                destNode.NumConnections = 0;
+                destNode.NumPackets = 1;
+                nodeRecords.InsertOne(destNode);
             }
             else
             {
                 destNode.NumPackets += 1;
                 nodeRecords.ReplaceOne(destIpAddressFilter, destNode);
             }
-        }
 
-        public void createConnection(Packet p)
-        {
+            // --- Connections ---
             // Check the database for a matching connection in both directions
             // We need to check both directions so we can capture data travelling along the connection and
             // against it.
@@ -227,15 +221,11 @@ namespace NetCapture
                 newConnection.LastPacketTimestampStr = p.TimestampStr;
                 connectionRecords.InsertOne(newConnection);
 
-                var sourceIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.SourceIP);
-                var destIpAddressFilter = Builders<Node>.Filter.Eq(x => x.IPaddr, p.DestinationIP);
-
-                Node sourceNode = nodeRecords.Find(sourceIpAddressFilter).FirstOrDefault<Node>();
-                Node destNode = nodeRecords.Find(destIpAddressFilter).FirstOrDefault<Node>();
-
-                sourceNode.NumConnections += 1;
-                destNode.NumConnections += 1;
+                // Get the two nodes on either side of the connection and increment their connection counters
+                sourceNode.NumConnections++; 
+                destNode.NumConnections++;
                 nodeRecords.ReplaceOne(sourceIpAddressFilter, sourceNode);
+                nodeRecords.ReplaceOne(destIpAddressFilter, destNode);
             }
 
             // If a connection exists in the DB with conn.source == p.source and conn.dest == p.dest increment the counter
