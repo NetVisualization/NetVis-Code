@@ -49,12 +49,12 @@ namespace NetCapture
             }
         }
 
-        private void device_OnPacketArrival(object sender, PacketCapture e)
+        private void device_OnPacketArrival(object sender, PacketCapture p)
         {
             // Define a new empty packet record
             Packet packetRecord = new Packet();
 
-            // Define source and dest mac/address/port variables
+            // Declare source/dest mac/address/port variables
             PhysicalAddress sourceMAC;
             PhysicalAddress destinationMAC;
             IPAddress sourceIP;
@@ -63,18 +63,18 @@ namespace NetCapture
             int destinationPort;
 
             // Parse packet capture into a useful packet
-            PacketDotNet.Packet packet = PacketDotNet.Packet.ParsePacket(e.GetPacket().LinkLayerType, e.GetPacket().Data);
+            PacketDotNet.Packet packet = PacketDotNet.Packet.ParsePacket(p.GetPacket().LinkLayerType, p.GetPacket().Data);
             int length = packet.TotalPacketLength;
             Type type = packet.GetType();
 
             // Convert the payload to HEX
             // Discuss before deployment
-            byte[] payloadData = e.GetPacket().Data;
-            string payloadHex = ByteArrayToString(payloadData);
+            string payloadHex = ByteArrayToString(p.GetPacket().Data);
 
             // Convert the timestamp to a readable format
+            // Yes timestamps as strings is bad, but Mongo can't handle DateTime objects
             // 'MM-DD-YY HH:MM:SS.sss'
-            DateTime timestamp = e.GetPacket().Timeval.Date;
+            DateTime timestamp = p.GetPacket().Timeval.Date;
             string time = timestamp.ToString("MM-dd-yyyy HH:mm:ss.fffff");
             //string time = $"{timestamp.Month}-{timestamp.Day}-{timestamp.Year} {timestamp.Hour}:{timestamp.Minute}:{timestamp.Second}.{timestamp.Millisecond}";
 
